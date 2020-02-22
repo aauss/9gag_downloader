@@ -1,14 +1,14 @@
-import click
 import os
 import time
+import urllib.request
 
-from selenium import webdriver
-
+import click
 from bs4 import BeautifulSoup
+from selenium import webdriver
 
 
 class Scraper:
-    def __init__(self, email, password, username):
+    def __init__(self, email: str, password: str, username: str):
         self.email = email
         self.password = password
         self.username = username
@@ -39,19 +39,45 @@ class Scraper:
 
     def scrape_upvotes(self):
         body = self.driver.find_element_by_css_selector("body")
+        # while True:
         soup = BeautifulSoup(self.driver.page_source, features="html.parser")
-        section_of_images = soup.find("section", {"id": "list-view-2"})
-        images_in_section = section_of_images.find_all(
+        section_of_posts = soup.find("section", {"id": "list-view-2"})
+        image_urls = self.find_img_urls(section_of_posts)
+        video_urls = self.find_video_urls(section_of_posts)
+        urls_to_scrape = image_urls + video_urls
+        for _ in range(len(urls_to_scrape)):
+            body.send_keys("j")
+            time.sleep(1)
+            print("scroll")
+        for url in urls_to_scrape:
+            self.download_from_url(url)
+
+    @staticmethod
+    def find_img_urls(section_of_posts):
+        images_in_section = section_of_posts.find_all_next(
             "img", alt=True
         )  # only images of interest have an alt tag
         image_urls = [image["src"] for image in images_in_section]
         full_size_image_urls = [
             url.replace("460s.jpg", "700b.jpg") for url in image_urls
         ]
-        for _ in range(len(full_size_image_urls)):
-            body.send_keys("j")
-            time.sleep(0.7)
-            print("scroll")
+        return full_size_image_urls
+
+    @staticmethod
+    def find_video_urls(section_of_posts):
+        videos_in_section = section_of_posts.find_all_next("video")
+        video_urls = [video.find("source")["src"] for video in videos_in_section]
+        return video_urls
+
+    @staticmethod
+    def download_from_url(url: str):
+        table = str.maketrans(r"\/", "||")
+        filename = url.translate(table)
+        if "jpg" in url:
+            filename += ".jpg"
+        elif "mp4" in url:
+            filename += "mp4"
+        urllib.request.urlretrieve(url, filename)
 
 
 @click.command()
@@ -66,7 +92,7 @@ class Scraper:
 )
 @click.option("--username", "-p", help="your 9gag username", type=str, prompt=True)
 def main(
-    email, password, username,
+        email, password, username,
 ):
     scraper = Scraper(email, password, username)
     time.sleep(1)
