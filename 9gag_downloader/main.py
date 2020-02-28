@@ -17,10 +17,10 @@ class Scraper:
         self.password = password
         self.username = username
 
-        self.driver = webdriver.Chrome(executable_path=Path("chromedriver").resolve())
+        self.driver = webdriver.Chrome(executable_path=Path("../chromedriver").resolve())
 
-        self.image_folder = Path("posts/images")
-        self.video_folder = Path("posts/videos")
+        self.image_folder = Path(f"../{self.username}_posts/images")
+        self.video_folder = Path(f"../{self.username}_posts/videos")
         self.image_folder.mkdir(parents=True, exist_ok=True)
         self.video_folder.mkdir(parents=True, exist_ok=True)
 
