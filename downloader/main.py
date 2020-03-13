@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 
-from line_sleep import LineSleep
+from downloader.line_sleep import LineSleep
 
 
 class Scraper:
@@ -17,8 +17,8 @@ class Scraper:
         self.password = password
         self.username = username
 
-        self.driver = webdriver.Chrome(executable_path=Path("../chromedriver").resolve())
-
+        self.driver = webdriver.Chrome(executable_path=(Path(__file__).parent.parent / "chromedriver").resolve())
+        print(Path(__file__).parent / "chromedriver")
         self.image_folder = Path(f"../{self.username}_posts/images")
         self.video_folder = Path(f"../{self.username}_posts/videos")
         self.image_folder.mkdir(parents=True, exist_ok=True)

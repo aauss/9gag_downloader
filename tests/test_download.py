@@ -6,11 +6,9 @@ from pathlib import Path
 
 @pytest.fixture
 def scraper_instance():
-    from main import Scraper
+    from downloader.main import Scraper
 
-    username = "test_user"
-    return Scraper(account_type="own email", email="fake@fake.com", password="weak_pw", username=username)
-
+    return Scraper(account_type="own email", email="fake@fake.com", password="weak_pw", username="test_user")
 
 def test_scraper_folder(scraper_instance):
     path = Path(f"../{scraper_instance.username}_posts")
