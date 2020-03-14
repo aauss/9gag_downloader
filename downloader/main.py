@@ -5,9 +5,14 @@ import click
 import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 from downloader.line_sleep import LineSleep
+
+WAIT = 5
 
 
 class Scraper:
@@ -17,26 +22,37 @@ class Scraper:
         self.password = password
         self.username = username
 
-        self.driver = webdriver.Chrome(executable_path=(Path(__file__).parent.parent / "chromedriver").resolve())
-        print(Path(__file__).parent / "chromedriver")
+        self.driver = webdriver.Chrome(
+            executable_path=(Path(__file__).parent.parent / "chromedriver").resolve()
+        )
         self.image_folder = Path(f"../{self.username}_posts/images")
         self.video_folder = Path(f"../{self.username}_posts/videos")
         self.image_folder.mkdir(parents=True, exist_ok=True)
         self.video_folder.mkdir(parents=True, exist_ok=True)
 
     def log_into_upvotes_page(self):
-        self.driver.get("https://9gag.com")
-        self.driver.find_element_by_xpath(
-            "/html/body/div[7]/div[1]/div[2]/div/span"
-        ).click()  # dismiss cookie warning
-        self.driver.find_element_by_xpath(
-            "/html/body/header/div/div/div[2]/a[1]"
-        ).click()  # login button
+        self.dismiss_cookie_warning()
+        self.click_login_button()
         if self.account_type == "own email":
             self.log_in_with_own_email()
         elif self.account_type == "google":
             self.log_in_with_google()
         self.driver.get(f"https://9gag.com/u/{self.username}/likes")
+
+    def dismiss_cookie_warning(self):
+        self.driver.get("https://9gag.com")
+        cookie_warning_x_button = "/html/body/div[7]/div[1]/div[2]/div/span"
+        cookie_warning = WebDriverWait(self.driver, WAIT).until(
+            EC.element_to_be_clickable((By.XPATH, cookie_warning_x_button))
+        )
+        cookie_warning.click()
+
+    def click_login_button(self):
+        login_button = "/html/body/header/div/div/div[2]/a[1]"
+        login_button = WebDriverWait(self.driver, WAIT).until(
+            EC.element_to_be_clickable((By.XPATH, login_button))
+        )
+        login_button.click()
 
     def log_in_with_own_email(self):
         self.driver.find_element_by_xpath(
@@ -69,11 +85,11 @@ class Scraper:
             image_urls = self.find_img_urls(section_of_posts)
             video_urls = self.find_video_urls(section_of_posts)
             urls_to_scrape = image_urls + video_urls
-        except Exception as e:
-            print(e)
+        except Exception as error:
+            print(error)
         finally:
-            with Path("urls.txt").open("w") as f:
-                f.write(" ".join(urls_to_scrape))
+            with Path("urls.txt").open("w") as file_:
+                file_.write(" ".join(urls_to_scrape))
 
     def scroll_until_end(self):
         last_height = self.driver.execute_script("return document.body.scrollHeight")
@@ -123,8 +139,8 @@ class Scraper:
         else:
             return
         response = requests.get(url)
-        with filename.open("wb") as f:
-            f.write(response.content)
+        with filename.open("wb") as file_:
+            file_.write(response.content)
 
 
 @click.command()
