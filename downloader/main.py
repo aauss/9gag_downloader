@@ -1,3 +1,4 @@
+import logging
 import time
 from pathlib import Path
 
@@ -5,6 +6,7 @@ import click
 import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
@@ -12,7 +14,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from downloader.line_sleep import LineSleep
 
-WAIT = 5
+WAIT = 10
 
 
 class Scraper:
@@ -41,11 +43,14 @@ class Scraper:
 
     def dismiss_cookie_warning(self):
         self.driver.get("https://9gag.com")
-        cookie_warning_x_button = "/html/body/div[7]/div[1]/div[2]/div/span"
-        cookie_warning = WebDriverWait(self.driver, WAIT).until(
-            EC.element_to_be_clickable((By.XPATH, cookie_warning_x_button))
-        )
-        cookie_warning.click()
+        try:
+            cookie_warning_x_button = "/html/body/div[7]/div[1]/div[2]/div/span"
+            cookie_warning = WebDriverWait(self.driver, WAIT).until(
+                EC.element_to_be_clickable((By.XPATH, cookie_warning_x_button))
+            )
+            cookie_warning.click()
+        except TimeoutException:
+            logging.exception("Cookie warning could not be dismissed.")
 
     def click_login_button(self):
         login_button = "/html/body/header/div/div/div[2]/a[1]"
@@ -143,32 +148,62 @@ class Scraper:
             file_.write(response.content)
 
 
+def prompt_proxy(ctx, _, public):
+    username = ctx.params.get("username")
+    if not username:
+        username = click.prompt("Your 9GAG username", type=str)
+    if public:
+        return {"public": True, "username": username}
+    account_type = ctx.params.get("account_type")
+    if not account_type:
+        account_type = click.prompt(
+            "Do you use Google or classic email to log in?",
+            type=click.Choice(["google", "classic"], case_sensitive=False),
+        )
+
+    email = ctx.params.get("email")
+    if not email:
+        email = click.prompt("Your 9GAG Facebook/Google/9GAG email adress", type=str)
+
+    password = ctx.params.get("password")
+    if not password:
+        password = click.prompt("Your 9GAG account password", hide_input=True)
+
+    return {
+        "public": False,
+        "username": username,
+        "account_type": account_type,
+        "email": email,
+        "password": password,
+    }
+
+
 @click.command()
+@click.option("--test", is_flag=True, default=False)
+@click.option(
+    "--public/--not-public", is_flag=True, default=False, callback=prompt_proxy
+)
+@click.option("-u", "--username", is_eager=True, type=str)
 @click.option(
     "-t",
     "--account-type",
-    help="do you use social media or your own email address to log in?",
-    type=click.Choice(["google", "own email"], case_sensitive=False),
-    prompt=True,
+    help="Do you use Google or classic email to log in?",
+    type=click.Choice(["google", "classic"], case_sensitive=False),
+    is_eager=True,
 )
-@click.option("-e", "--email", help="your 9gag account email", type=str, prompt=True)
+@click.option("-e", "--email", is_eager=True, help="Your 9gag account email", type=str)
 @click.option(
-    "-p",
-    "--password",
-    help="your 9gag account password",
-    type=str,
-    prompt=True,
-    hide_input=True,
+    "-p", "--password", is_eager=True, help="Your 9gag account password", type=str,
 )
-@click.option("-u", "--username", help="your 9gag username", type=str, prompt=True)
-def main(
-    account_type, email, password, username,
-):
-    scraper = Scraper(account_type, email, password, username)
-    with LineSleep(2.5, __file__):
-        scraper.log_into_upvotes_page()
-    scraper.scroll_until_end()
+def main(public, username, account_type, email, password, test):
+    if test:
+        click.echo(public)
+    else:
+        scraper = Scraper(account_type, email, password, username)
+        with LineSleep(2.5, __file__):
+            scraper.log_into_upvotes_page()
+        scraper.scroll_until_end()
 
 
 if __name__ == "__main__":
-    main()
+    main()  # pylint: disable=no-value-for-parameter
