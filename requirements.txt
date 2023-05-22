@@ -1,4 +1,4 @@
 selenium==3.141.0
-requests==2.23.0
+requests==2.31.0
 Click==7.0
 beautifulsoup4==4.8.2
